@@ -497,7 +497,7 @@ WHERE OrderDate = EOMONTH(OrderDate)
 ORDER BY EmployeeID, OrderID
 ```
 
-## 36 | Orders with Many Line Items
+## 35 | Orders with Many Line Items
 
 The mobile app developers are testing an app that customers will use to show orders. In order to make sure that even the largest orders show up correctly on the app, they'd like some samples of orders that have lots of individual line items. Show the top 10 orders with the most line items, in order of total line items. 
 
@@ -509,6 +509,214 @@ GROUP BY Orders.OrderID
 ORDER BY COUNT(*) DESC
 ```
 
-## 37 | Orders - Random Assortment 
+## 36 | Orders - Random Assortment 
 
 The app developers would like to get a random assortment of orders for beta testing on their app. Show a random set of 2% of all orders. 
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+SELECT TOP 2 PERCENT OrderID
+FROM Orders
+ORDER BY NEWID()
+```
+
+## 37 | Orders - Accidental Double Entry
+
+Suppose someone came to you claiming they accidentally entered a line item twice on an order, each time with a different product ID, but the same quantity. They remember the quantity was 60 or more. Show all the order IDs that match this, in order of order ID.
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+SELECT OrderID, Quantity
+FROM OrderDetails
+WHERE Quantity >= 60
+GROUP BY OrderID, Quantity
+HAVING COUNT(OrderID) > 1
+ORDER BY OrderID
+```
+
+## 38 | Orders - Accidental Double Entry with Details 
+
+We want to show the details of the order for orders that match the criteria of the above query. 
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+;WITH Acc_Doub_Entry AS(
+  SELECT OrderID, Quantity
+  FROM OrderDetails
+  WHERE Quantity >= 60
+  GROUP BY OrderID, Quantity
+  HAVING COUNT(OrderID) > 1)
+SELECT OrderID, ProductID, UnitPrice, Quantity, Discount
+FROM OrderDetails
+WHERE OrderID IN (SELECT OrderID FROM Acc_Doub_Entry)
+ORDER BY OrderID, Quantity
+```
+
+## 39 | Orders - Accidental Double Entry Details Derived Table 
+
+How would we get the same results as above without a common table expression?
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+SELECT OrderDetails.OrderID, ProductID, UnitPrice, Quantity, Discount
+FROM OrderDetails
+JOIN (SELECT DISTINCT(OrderID)
+FROM OrderDetails
+WHERE Quantity >= 60
+GROUP BY OrderID, Quantity
+HAVING COUNT(OrderID) > 1) PotentialProblemOrders
+ON PotentialProblemOrders.OrderID = OrderDetails.OrderID
+ORDER BY OrderID, ProductID
+```
+
+## 40 | Late Orders 
+
+Find all the orders that are arriving late. Place them in order by the longest delays to the shortest delays.
+
+The table shows 25/39 rows.
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+SELECT OrderID, OrderDate = CONVERT(DATE, OrderDate), RequiredDate, ShippedDate 
+FROM Orders
+WHERE CONVERT(DATE, ShippedDate) >= CONVERT(DATE, RequiredDate)
+ORDER BY DATEDIFF(dd, CONVERT(DATE, ShippedDate), CONVERT(DATE, RequiredDate)) ASC
+```
+
+## 41 | Late Orders by Employees
+
+Some salespeople have more orders arriving late than others. Which sales people have the most orders arriving late?
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+SELECT Employees.EmployeeID, Employees.LastName, TotalLateOrders = COUNT(*)
+FROM Orders
+JOIN Employees ON Orders.EmployeeID = Employees.EmployeeID
+WHERE CONVERT(DATE, ShippedDate) >= CONVERT(DATE, RequiredDate)
+GROUP BY Employees.EmployeeID, Employees.LastName
+ORDER BY TotalLateOrders DESC
+```
+
+## 42 | Late Orders vs. Total Orders 
+
+We want to compare the number of late orders per salesperson with the number of total orders per salesperson. 
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+;WITH Tot_Late_Orders AS(
+  SELECT Employees.EmployeeID, Employees.LastName, TotalLateOrders = COUNT(*)
+  FROM Orders
+  JOIN Employees ON Orders.EmployeeID = Employees.EmployeeID
+  WHERE CONVERT(DATE, ShippedDate) >= CONVERT(DATE, RequiredDate)
+  GROUP BY Employees.EmployeeID, Employees.LastName
+  ),
+
+Overall_Orders AS(
+  SELECT Orders.EmployeeID, Employees.LastName, TotalOrders = COUNT(*)
+  FROM Orders
+  JOIN Employees ON Orders.EmployeeID = Employees.EmployeeID
+  GROUP BY Orders.EmployeeID, Employees.LastName
+)
+
+SELECT Overall_Orders.EmployeeID, Overall_Orders.LastName, AllOrders = TotalOrders, LateOrders = ISNULL(TotalLateOrders, 0), Prop = ROUND(((ISNULL(TotalLateOrders, 0) * 1.0) / Overall_Orders.TotalOrders), 2)
+FROM Tot_Late_Orders
+RIGHT JOIN Overall_Orders ON Tot_Late_Orders.EmployeeID = Overall_Orders.EmployeeID
+ORDER BY Prop DESC
+```
+
+## 43 | Customer Grouping
+
+The VP of Sales would like us to create customer groups depending on how much they ordered in 2016. The groupings would look like the following: 
+
+* 0 - 1000
+* 1001 - 5000
+* 5001 - 10000
+* 10000+
+
+The table below shows 25/81 rows.
+
+```{sql, connection = sql_con, output_var = 'ex1'}
+SELECT Customers.CustomerID, Customers.CompanyName, TotalPrice = SUM(OrderDetails.UnitPrice * OrderDetails.Quantity), CustomerGroup = CASE
+  WHEN SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) <= 1000 THEN 'Low'
+  WHEN SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) > 1000 AND SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) <= 5000 THEN 'Medium'
+  WHEN SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) > 5000 AND SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) <= 10000 THEN 'High'
+  ELSE 'Very High'
+END
+FROM Customers
+JOIN Orders ON Customers.CustomerID = Orders.CustomerID 
+JOIN OrderDetails ON Orders.OrderID = OrderDetails.OrderID
+WHERE YEAR(CONVERT(DATE, OrderDate)) = 2016
+GROUP BY Customers.CustomerID, Customers.CompanyName
+ORDER BY Customers.CustomerID ASC
+```
+
+## 44 | Customer Grouping with Percentage
+
+We would like to show the breakdown of each group and their respective percentages of the whole catalog of business.
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+;WITH Orders_2016 AS(
+  SELECT Customers.CustomerID, Customers.CompanyName, TotalOrderAmount = SUM(Quantity * UnitPrice)
+  FROM Customers 
+  JOIN Orders ON Orders.CustomerID = Customers.CustomerID
+  JOIN OrderDetails ON Orders.OrderID = OrderDetails.OrderID
+  WHERE YEAR(CONVERT(DATE, OrderDate)) = 2016
+  GROUP BY Customers.CustomerID, Customers.CompanyName
+),
+Cust_Groups AS(
+  SELECT CustomerID, CompanyName, TotalOrderAmount, CustomerGroup = CASE
+    WHEN TotalOrderAmount <= 1000 THEN 'Low'
+    WHEN TotalOrderAmount > 1000 AND TotalOrderAmount <= 5000 THEN 'Medium'
+    WHEN TotalOrderAmount > 5000 AND TotalOrderAmount <= 10000 THEN 'High'
+    ELSE 'Very High'
+  END
+  FROM Orders_2016)
+  
+SELECT CustomerGroup, TotalInGroup = COUNT(*), PercentageInGroup = COUNT(*) * 1.0 / (SELECT COUNT(*) FROM Cust_Groups)
+FROM Cust_Groups
+GROUP BY CustomerGroup
+ORDER BY TotalInGroup DESC
+```
+
+## 45 | Customer Grouping - Flexible 
+
+The sales team would like an overview of the customer groupings, and would like them in a way in which they don't need to edit much sql in order to change the boundaries. 
+
+In this table we will use the CustomerGroupThresholds table. The table output is 25/81 rows.
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+;WITH Orders_2016 AS (
+  SELECT Customers.CustomerID, Customers.CompanyName, TotalOrderAmount = SUM(Quantity * UnitPrice)
+  FROM Customers
+  JOIN Orders ON Orders.CustomerID = Customers.CustomerID
+  JOIN OrderDetails ON Orders.OrderID = OrderDetails.OrderID
+  WHERE YEAR(CONVERT(DATE, OrderDate)) = 2016
+  GROUP BY Customers.CustomerID, Customers.CompanyName
+)
+SELECT CustomerID, CompanyName, TotalOrderAmount, CustomerGroupName 
+FROM Orders_2016
+JOIN CustomerGroupThresholds ON Orders_2016.TotalOrderAmount
+BETWEEN CustomerGroupThresholds.RangeBottom AND CustomerGroupThresholds.RangeTop
+ORDER BY CustomerID
+```
+
+## 46 | Countries with Suppliers or Customers 
+
+Return a list of all countries where suppliers or customers are based.
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+SELECT Distinct(Country) 
+FROM Customers
+UNION 
+SELECT DISTINCT(Country)
+FROM Suppliers
+ORDER BY Country
+```
+
+## 47 | Countries with Suppliers or Customers V2
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+;WITH SupplierCountries AS(
+SELECT DISTINCT(Country) FROM Suppliers
+),
+CustomerCountries AS(
+SELECT DISTINCT(Country) FROM Customers
+)
+SELECT SupplierCountry = SupplierCountries.Country, CustomerCountry = CustomerCountries.Country
+FROM SupplierCountries
+FULL OUTER JOIN CustomerCountries ON SupplierCountries.Country = CustomerCountries.Country
+```
+
