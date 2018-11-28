@@ -15,7 +15,7 @@ library(DBI)
 
 
 ```{r, echo=FALSE}
-# rmarkdown::render("final_proj.Rmd", params = "ask") 
+# rmarkdown::render("sql_practicum.Rmd", params = "ask") 
 sql_con <- dbConnect(odbc(),
                  Driver = "ODBC Driver 17 for SQL Server",
                  Server = "localhost",
@@ -402,7 +402,8 @@ For inventory, we need to show employee and order detail information for all ord
 The table below shows 25 / 2155 rows.
 
 ```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
-SELECT Employees.EmployeeID, LastName, Orders.OrderID, Products.ProductName, OrderDetails.Quantity FROM Employees 
+SELECT Employees.EmployeeID, LastName, Orders.OrderID, Products.ProductName, OrderDetails.Quantity 
+FROM Employees 
 JOIN Orders ON Employees.EmployeeID = Orders.EmployeeID
 JOIN OrderDetails ON Orders.OrderID = OrderDetails.OrderID
 JOIN Products ON OrderDetails.ProductID = Products.ProductID
@@ -477,7 +478,9 @@ We wish to calcuate high value customers and order by the total amount including
 This table shows 25/81 rows. 
 
 ```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
-SELECT Customers.CustomerID, Customers.CompanyName, TotalsWithoutDiscount = SUM(OrderDetails.UnitPrice * OrderDetails.Quantity), TotalsWithDiscount = ROUND(SUM(OrderDetails.UnitPrice * OrderDetails.Quantity * (1 - OrderDetails.Discount)), 2)
+SELECT Customers.CustomerID, Customers.CompanyName, 
+       TotalsWithoutDiscount = SUM(OrderDetails.UnitPrice * OrderDetails.Quantity), 
+       TotalsWithDiscount = ROUND(SUM(OrderDetails.UnitPrice * OrderDetails.Quantity * (1 - OrderDetails.Discount)), 2)
 FROM Customers
 JOIN Orders ON Customers.CustomerID = Orders.CustomerID 
 JOIN OrderDetails ON Orders.OrderID = OrderDetails.OrderID
@@ -611,7 +614,9 @@ Overall_Orders AS(
   GROUP BY Orders.EmployeeID, Employees.LastName
 )
 
-SELECT Overall_Orders.EmployeeID, Overall_Orders.LastName, AllOrders = TotalOrders, LateOrders = ISNULL(TotalLateOrders, 0), Prop = ROUND(((ISNULL(TotalLateOrders, 0) * 1.0) / Overall_Orders.TotalOrders), 2)
+SELECT Overall_Orders.EmployeeID, Overall_Orders.LastName, AllOrders = TotalOrders, 
+       LateOrders = ISNULL(TotalLateOrders, 0), 
+       Prop = ROUND(((ISNULL(TotalLateOrders, 0) * 1.0) / Overall_Orders.TotalOrders), 2)
 FROM Tot_Late_Orders
 RIGHT JOIN Overall_Orders ON Tot_Late_Orders.EmployeeID = Overall_Orders.EmployeeID
 ORDER BY Prop DESC
@@ -629,11 +634,15 @@ The VP of Sales would like us to create customer groups depending on how much th
 The table below shows 25/81 rows.
 
 ```{sql, connection = sql_con, output_var = 'ex1'}
-SELECT Customers.CustomerID, Customers.CompanyName, TotalPrice = SUM(OrderDetails.UnitPrice * OrderDetails.Quantity), CustomerGroup = CASE
-  WHEN SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) <= 1000 THEN 'Low'
-  WHEN SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) > 1000 AND SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) <= 5000 THEN 'Medium'
-  WHEN SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) > 5000 AND SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) <= 10000 THEN 'High'
-  ELSE 'Very High'
+SELECT Customers.CustomerID, Customers.CompanyName, 
+       TotalPrice = SUM(OrderDetails.UnitPrice * OrderDetails.Quantity), 
+       CustomerGroup = CASE
+       WHEN SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) <= 1000 THEN 'Low'
+       WHEN SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) > 1000 
+       AND SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) <= 5000 THEN 'Medium'
+       WHEN SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) > 5000 
+       AND SUM(OrderDetails.UnitPrice * OrderDetails.Quantity) <= 10000 THEN 'High'
+       ELSE 'Very High'
 END
 FROM Customers
 JOIN Orders ON Customers.CustomerID = Orders.CustomerID 
@@ -665,7 +674,8 @@ Cust_Groups AS(
   END
   FROM Orders_2016)
   
-SELECT CustomerGroup, TotalInGroup = COUNT(*), PercentageInGroup = COUNT(*) * 1.0 / (SELECT COUNT(*) FROM Cust_Groups)
+SELECT CustomerGroup, TotalInGroup = COUNT(*), 
+       PercentageInGroup = COUNT(*) * 1.0 / (SELECT COUNT(*) FROM Cust_Groups)
 FROM Cust_Groups
 GROUP BY CustomerGroup
 ORDER BY TotalInGroup DESC
@@ -708,6 +718,8 @@ ORDER BY Country
 
 ## 47 | Countries with Suppliers or Customers V2
 
+With More Details
+
 ```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
 ;WITH SupplierCountries AS(
 SELECT DISTINCT(Country) FROM Suppliers
@@ -718,5 +730,84 @@ SELECT DISTINCT(Country) FROM Customers
 SELECT SupplierCountry = SupplierCountries.Country, CustomerCountry = CustomerCountries.Country
 FROM SupplierCountries
 FULL OUTER JOIN CustomerCountries ON SupplierCountries.Country = CustomerCountries.Country
+```
+
+## 48 | Countries with Suppliers or Customers V3 
+
+Return country name, total suppliers, and total customers. 
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+;WITH CountriesList AS(
+  SELECT Distinct(Country) 
+  FROM Customers
+  UNION
+  SELECT DISTINCT(Country)
+  FROM Suppliers
+), 
+SupplierCountries AS(
+SELECT Country, NumCountry = COUNT(*) FROM Suppliers
+GROUP BY Country
+),
+CustomerCountries AS(
+SELECT Country, NumCountry = COUNT(*) FROM Customers
+GROUP BY Country
+)
+SELECT CountriesList.Country, 
+       TotalSuppliers = ISNULL(SupplierCountries.NumCountry, 0), 
+       TotalCustomers = ISNULL(CustomerCountries.NumCountry, 0)
+FROM CountriesList
+FULL OUTER JOIN SupplierCountries ON CountriesList.Country = SupplierCountries.Country
+FULL OUTER JOIN CustomerCountries ON CountriesList.Country = CustomerCountries.Country
+ORDER BY Country
+```
+
+## 49 | First Order in Each Country 
+
+Suppose we wish to know the first order in each country, ordered by order id. 
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+;WITH OrdersByCountry AS(
+  SELECT ShipCountry, CustomerID, OrderID, OrderDate = CONVERT(DATE, OrderDate), 
+  RowNumberPerCountry = Row_Number() OVER(PARTITION BY ShipCountry ORDER BY ShipCountry, OrderID)
+  FROM Orders
+)
+SELECT ShipCountry, CustomerID, OrderID, OrderDate
+FROM OrdersByCountry
+WHERE RowNumberPerCountry = 1
+ORDER BY ShipCountry
+```
+
+## 50 | Customers with Multiple Orders in 5 Day Period
+
+There are customers for whom freight is a major expense when ordering. By batching up their orders, and making one large order as opposed to multiple smaller orders in a short period of time, they can reduce their freight costs significantly. 
+
+Show the customers who have made more than 1 order in a 5 day period. The table shows 25 / 71 rows.
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+SELECT InitialOrder.CustomerID, 
+       InitialOrderID = InitialOrder.OrderID,
+       InitialOrderDate = CONVERT(DATE, InitialOrder.OrderDate),
+       NextOrderID = NextOrder.OrderID, 
+       NextOrderDate = CONVERT(DATE, NextOrder.OrderDate),
+       DaysBetweenOrders = DATEDIFF(dd, InitialOrder.OrderDate, NextOrder.OrderDate)
+FROM Orders InitialOrder
+JOIN Orders NextOrder ON InitialOrder.CustomerID = NextOrder.CustomerID
+WHERE InitialOrder.OrderID < NextOrder.OrderID
+AND DATEDIFF(dd, InitialOrder.OrderDate, NextOrder.OrderDate) <= 5
+ORDER BY InitialOrder.CustomerID, InitialOrder.OrderID
+```
+
+Alternatively, we could do it with a window function. The table below shows 25 / 69 rows.
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = 25}
+;WITH NextOrderDate AS(
+  SELECT CustomerID, OrderDate = CONVERT(DATE, OrderDate),
+  NextOrderDate = CONVERT(DATE, LEAD(OrderDate, 1) 
+  OVER(PARTITION BY CustomerID ORDER BY CustomerID, OrderDate))
+  FROM Orders
+)
+SELECT CustomerID, OrderDate, NextOrderDate, DaysBetweenOrders = DATEDIFF(dd, OrderDate, NextOrderDate)
+FROM NextOrderDate
+WHERE DATEDIFF(dd, OrderDate, NextOrderDate) <= 5
 ```
 
