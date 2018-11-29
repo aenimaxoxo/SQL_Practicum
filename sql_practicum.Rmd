@@ -14,7 +14,7 @@ library(DBI)
 ```
 
 
-```{r, echo=FALSE}
+```{r}
 # rmarkdown::render("sql_practicum.Rmd", params = "ask") 
 sql_con <- dbConnect(odbc(),
                  Driver = "ODBC Driver 17 for SQL Server",
@@ -35,6 +35,32 @@ For the sake of readability, I have limited the output to the top 25 rows. If a 
 
 If you wish to see the full output, in the code there is code chunk options. Remove max.print = 25 for full output.
 
+# Overview
+
+### Why was this project chosen? 
+
+SQL is a very extensible language. Built off a few primitives (select, from, where), the combination of different functions provides a rich toolset for exploring databases. I wanted to build familiarity with some of the features available through practice. 
+
+### What does your project do / how does it work? 
+
+The following project consists of 50 sql queries, ranging in difficulty from simple and moving on top advanced. Each section builds on knowledge built in the last. 
+
+### What tools did you use? 
+
+I used Rmarkdown for the pdf formatting, R language for connecting to the database, microsoft sql server 2017 for setting a database on my localhost, azure data studio for managing permissions for connections, and odbc for connection drivers. The queries themselves are in MS SQL. The database was provided by **Sylvia Moestl Vasilik** in accompaniment with her book **SQL Practice Problems**. 
+
+### What did you learn? 
+
+I learned quite a bit of SQL. Thanks to these challenging exercises, I feel much more comfortable with the language and its functionality. I also got to explore the effects of a variety of functions and methods for querying data.
+
+### What is the format of the data?
+
+The data is stored in a MS SQL Server. It contains a variety of tables which are shown in an upcoming section. 
+
+### What other things would you have liked to do with this project?
+
+I would have liked to make some models, but unfortunately this data does not contain any fields worth predicting on. 
+
 # SQL Analysis
 
 ## 0.1 | Tables
@@ -47,7 +73,7 @@ WHERE TABLE_TYPE = 'BASE TABLE'
 
 ## 0.2 | Table Information
 
-```{sql, connection = sql_con, output_var = 'ex1'}
+```{sql, connection = sql_con, output_var = 'ex1', max.print = NA}
 SELECT TABLE_NAME,
        COLUMN_NAME,
        DATA_TYPE
@@ -55,22 +81,91 @@ FROM   INFORMATION_SCHEMA.COLUMNS
 ORDER BY TABLE_NAME
 ```
 
+## Categories 
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = NA}
+SELECT TOP 3 * 
+FROM Categories
+```
+
+## Customers 
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = NA}
+SELECT TOP 3 * 
+FROM Customers
+```
+
+## Employees
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = NA}
+SELECT TOP 3 * 
+FROM Employees
+```
+
+## Order Details 
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = NA}
+SELECT TOP 3 * 
+FROM OrderDetails
+```
+
+## Orders 
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = NA}
+SELECT TOP 3 * 
+FROM Orders
+```
+
+## Products
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = NA}
+SELECT TOP 3 * 
+FROM Products
+```
+
+## Shippers 
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = NA}
+SELECT TOP 3 * 
+FROM Shippers
+```
+
+## Suppliers
+
+```{sql, connection = sql_con, output_var = 'ex1', max.print = NA}
+SELECT TOP 3 * 
+FROM Suppliers
+```
+
+
 # Easy Queries
 
 Functions Used: 
 
 * Like
+    + Determins whether a specific character string matches a specified pattern. 
 * Wildcard %
+    + Matches any single character within the specified range or set that is specified between brackets. 
 * In
+    + Determines whether a specified value matches any value in a subquery or list
 * Date
+    + coerces to date object 
 * Order By
+    + sorts data returned by a query
+* Group By
+    + A select statement clause that divides the query result into groups of rows, usually for the purpose of performing one or more aggregations on the group
 * Convert
+    + coerces to given type
 * Concat
+    + adds two strings together
 * Count
-* Mutate
+    + returns the number of items in a group
 * Min
+    + returns the minimum value
 * Distinct
+    + returns unique values
 * Join
+    + joins two tables together on a specific column
 
 ## 1 | Which Shippers Do We Have?
 
@@ -273,21 +368,33 @@ WHERE OrderID < 10270 ORDER BY OrderID
 Functions Used: 
 
 * Exists 
+    + specifies a subquery to test for the existence of rows
 * DateAdd
+    + Adds a specified number value to a specified datepart of an input date value, and then returns that modified value
 * Nested Select
+    + allows for a query as an operated on dataframe
 * Multiple Join
-* Join
+    + joins multiple tables on specified column values
 * Date
+    + coerces to date
 * Year
+    + pulls the year value from a date object
 * Top
+    + returns the top n rows
 * Case
+    + allows for a control sequence on data
 * Count
+    + returns number of items from a group
 * Order By
+    + sorts the data
 * Group By
+    + A select statement clause that divides the query result into groups of rows, usually for the purpose of performing one or more aggregations on the group
 * Convert
+    + coerces to a given datatype
 * Avg
-* Null
+    + returns the average of a column of numbers
 * Not
+    + returns the negation of the statement
 
 ## 20 | Categories and Total Products in Each Category 
 
@@ -437,9 +544,74 @@ WHERE NOT EXISTS
 
 # Advanced Problems 
 
-Techniques Used: 
-
 Functions Used: 
+
+* sum
+    + returns a sum of a column of numeric values
+
+* multiple join
+    + joins multiple tables by column 
+
+* convert
+    + coerces to a given datatype
+
+* date
+    + coerces to a date object
+
+* group by
+    + A select statement clause that divides the query result into groups of rows, usually for the purpose of performing one or more aggregations on the group
+
+* order by
+    + sorts the given data by specified values
+
+* round
+    + rounds to nearest given integer expansion, e.g. whole number, 0.1, 0.01, 0.001, ...
+
+* eomonth
+    + returns the last day of each months value
+
+* top
+    + returns the top n rows
+
+* newid
+    + creates a unique identifier for the assigned value
+
+* percent
+    + returns a percentage of the data as opposed to a fixed integer
+
+* count
+    + returns a sum of a specified data set
+
+* subquery
+    + a query within a query
+
+* common table expressions
+    + a query created specifically for aid in another query
+
+* distinct 
+    + returns unique values
+
+* isnull
+    + if a value is null, coerces null to a given number
+
+* case
+    + allows for control flow on a given computation
+
+* union
+    + a set operation that returns all unique values of multiple given queries
+
+* full outer join
+    + a join which keeps the values of both joined tables, regardless of whether the items are in both tables or not
+
+* row_number
+    + adds a row number identifier
+
+* window partition
+    + partitions the data into segments and allows for a set of functions to be performed over the partitions
+
+* table alias
+    + allows for multiple named instances of a single database to be modified independently and used in a query
+
 
 ## 31 | High Value Customers 
 
@@ -810,4 +982,3 @@ SELECT CustomerID, OrderDate, NextOrderDate, DaysBetweenOrders = DATEDIFF(dd, Or
 FROM NextOrderDate
 WHERE DATEDIFF(dd, OrderDate, NextOrderDate) <= 5
 ```
-
