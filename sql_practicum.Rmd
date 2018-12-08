@@ -47,7 +47,7 @@ The following project consists of 50 sql queries, ranging in difficulty from sim
 
 ### What tools did you use? 
 
-I used Rmarkdown for the pdf formatting, R language for connecting to the database, microsoft sql server 2017 for setting a database on my localhost, azure data studio for managing permissions for connections, and odbc for connection drivers. The queries themselves are in MS SQL. The database was provided by **Sylvia Moestl Vasilik** in accompaniment with her book **SQL Practice Problems**. 
+I used Rmarkdown for the pdf formatting, R language for connecting to the database, microsoft sql server 2017 for setting a database on my localhost, azure data studio for managing permissions for connections, and odbc for connection drivers. The queries themselves are in MS SQL. The database was an extension of the Northwind database modified to contain more tables. The modification was created by **Sylvia Moestl Vasilik**. 
 
 ### What did you learn? 
 
